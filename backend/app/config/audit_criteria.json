@@ -1,0 +1,149 @@
+{
+  "version": "1.0.0",
+  "prompt_version": "1.0.0",
+  "measures": [
+    {
+      "id": "user_engagement",
+      "name": "User Engagement & Investigation Handling",
+      "weight": 1,
+      "min_score": 1,
+      "max_score": 5,
+      "description": "Quality and timeliness of updates during the investigation. Do not judge timeliness by comment count alone. Consider elapsed time, priority, meaningfulness, progress visibility, and communication gaps.",
+      "levels": [
+        {
+          "score": 5,
+          "label": "Excellent",
+          "system_defined_extension": false,
+          "guidance": "Clear, timely updates with continuous progress visibility: acknowledgement, investigation, meaningful progress, blockers, next steps, and resolution communication."
+        },
+        {
+          "score": 4,
+          "label": "Good",
+          "system_defined_extension": false,
+          "guidance": "Regular updates with adequate investigation progress. Minor gaps are allowed."
+        },
+        {
+          "score": 3,
+          "label": "Fair",
+          "system_defined_extension": false,
+          "guidance": "Limited updates with basic investigation progress. Infrequent, generic, or lacking meaningful investigation detail."
+        },
+        {
+          "score": 2,
+          "label": "Very limited",
+          "system_defined_extension": true,
+          "guidance": "System-defined extension. Very limited investigation communication, with major gaps in updates or progress visibility."
+        },
+        {
+          "score": 1,
+          "label": "No meaningful updates",
+          "system_defined_extension": true,
+          "guidance": "System-defined extension. No meaningful investigation updates, or extremely poor communication. Absence of notes is not evidence that communication happened."
+        }
+      ]
+    },
+    {
+      "id": "issue_diagnosis",
+      "name": "Issue Diagnosis",
+      "weight": 1,
+      "min_score": 1,
+      "max_score": 5,
+      "description": "The ticket should answer what caused the issue, where it occurred, and why. A symptom such as pipeline failed is not a root cause. Distinguish symptom, immediate cause, contributing factor, root cause, affected component, and affected business process.",
+      "levels": [
+        {
+          "score": 5,
+          "label": "Excellent",
+          "system_defined_extension": false,
+          "guidance": "Clearly answers what, where, and why, and identifies the root cause."
+        },
+        {
+          "score": 4,
+          "label": "Good",
+          "system_defined_extension": false,
+          "guidance": "Answers most of the diagnostic questions with sufficient analysis."
+        },
+        {
+          "score": 3,
+          "label": "Fair",
+          "system_defined_extension": false,
+          "guidance": "Partial diagnosis with limited root cause detail."
+        },
+        {
+          "score": 2,
+          "label": "Limited",
+          "system_defined_extension": true,
+          "guidance": "System-defined extension. Limited diagnosis. One or more key diagnostic dimensions are missing, or statements conflict."
+        },
+        {
+          "score": 1,
+          "label": "Not documented",
+          "system_defined_extension": true,
+          "guidance": "System-defined extension. No meaningful diagnosis or root cause analysis."
+        }
+      ]
+    },
+    {
+      "id": "solutioning",
+      "name": "Solutioning",
+      "weight": 1,
+      "min_score": 1,
+      "max_score": 5,
+      "description": "The ticket should answer what was done, who performed it, and how that resolved the issue. Look for the action, the person or team responsible, the technical change, validation, evidence of recovery, and preventive action when it applies. Do not infer ownership from the assignment field.",
+      "levels": [
+        {
+          "score": 5,
+          "label": "Excellent",
+          "system_defined_extension": false,
+          "guidance": "Complete resolution details, explicit ownership, and validation of the fix."
+        },
+        {
+          "score": 4,
+          "label": "Good",
+          "system_defined_extension": false,
+          "guidance": "Resolution and actions are documented, with minor gaps such as incomplete validation."
+        },
+        {
+          "score": 3,
+          "label": "Fair",
+          "system_defined_extension": false,
+          "guidance": "Basic resolution with limited detail or ownership."
+        },
+        {
+          "score": 2,
+          "label": "Partial",
+          "system_defined_extension": true,
+          "guidance": "System-defined extension. Resolution is only partly documented and important information, such as who performed the fix, is missing."
+        },
+        {
+          "score": 1,
+          "label": "Missing",
+          "system_defined_extension": true,
+          "guidance": "System-defined extension. Resolution or the action taken is missing or unclear."
+        }
+      ]
+    }
+  ],
+  "classification": [
+    {"min_inclusive": 90, "max_inclusive": 100, "label": "Excellent"},
+    {"min_inclusive": 75, "max_inclusive": 89.99, "label": "Good"},
+    {"min_inclusive": 60, "max_inclusive": 74.99, "label": "Fair"},
+    {"min_inclusive": 0, "max_inclusive": 59.99, "label": "Needs Improvement"}
+  ],
+  "confidence_bands": [
+    {"min_inclusive": 0.85, "label": "High confidence"},
+    {"min_inclusive": 0.70, "label": "Medium confidence"},
+    {"min_inclusive": 0, "label": "Requires human review"}
+  ],
+  "timeliness": {
+    "priority_first_update_hours": {"1": 1, "2": 4, "3": 8, "4": 24},
+    "penalize_when_first_update_and_longest_gap_exceed": true
+  },
+  "messages": {
+    "root_cause_missing": "Root cause not sufficiently documented.",
+    "ownership_missing": "Ownership of the resolution action is not explicitly documented.",
+    "updates_missing": "No meaningful investigation updates were found in the ticket.",
+    "resolution_missing": "Resolution action is not documented.",
+    "conflict": "Conflicting diagnostic statements are present. Root cause is not settled in the ticket.",
+    "symptom_not_cause": "A symptom is documented. A symptom is not a root cause."
+  }
+}

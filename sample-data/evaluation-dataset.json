@@ -1,0 +1,68 @@
+{
+  "version": "1.0.0",
+  "notes": "Expected ranges for the deterministic mock auditor. Live Azure OpenAI is not required. Ranges leave room for rubric wording changes; flags and gap phrases are the contract for known failure modes.",
+  "tickets": [
+    {
+      "ticket_id": "INC1001",
+      "scenario": "excellent",
+      "percentage_min": 90,
+      "percentage_max": 100,
+      "classification": "Excellent",
+      "expect_human_review": false
+    },
+    {
+      "ticket_id": "INC1002",
+      "scenario": "good",
+      "percentage_min": 75,
+      "percentage_max": 89.99,
+      "classification": "Good",
+      "expect_human_review": false
+    },
+    {
+      "ticket_id": "INC1003",
+      "scenario": "fair",
+      "percentage_min": 60,
+      "percentage_max": 74.99,
+      "classification": "Fair",
+      "expect_human_review": true
+    },
+    {
+      "ticket_id": "INC1004",
+      "scenario": "poor",
+      "percentage_min": 0,
+      "percentage_max": 59.99,
+      "classification": "Needs Improvement",
+      "expect_human_review": true
+    },
+    {
+      "ticket_id": "INC1005",
+      "scenario": "missing_rca",
+      "percentage_min": 50,
+      "percentage_max": 80,
+      "diagnosis_max": 2,
+      "required_gap": "Root cause not sufficiently documented.",
+      "expect_human_review": true
+    },
+    {
+      "ticket_id": "INC1006",
+      "scenario": "missing_owner",
+      "solutioning_max": 2,
+      "required_gap": "Ownership of the resolution action is not explicitly documented.",
+      "expect_human_review": true
+    },
+    {
+      "ticket_id": "INC1007",
+      "scenario": "missing_updates",
+      "engagement_max": 2,
+      "required_gap": "No meaningful investigation updates were found in the ticket.",
+      "expect_human_review": true
+    },
+    {
+      "ticket_id": "INC1008",
+      "scenario": "conflicting_information",
+      "diagnosis_max": 3,
+      "required_flag": "conflicting information",
+      "expect_human_review": true
+    }
+  ]
+}

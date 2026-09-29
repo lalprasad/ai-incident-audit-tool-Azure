@@ -1,0 +1,232 @@
+SERVICE NOW INCIDENT EXTRACT
+Source: Sample operations review
+Records: 8
+
+INCIDENT NUMBER: INC1001
+SHORT DESCRIPTION: Checkout latency after payments-api deploy
+PRIORITY: 2
+SEVERITY: 2
+STATE: Closed
+ASSIGNMENT GROUP: Payments SRE
+ASSIGNED TO: Priya Nair
+CALLER: Jordan Lee
+BUSINESS SERVICE: Checkout
+CONFIGURATION ITEM: payments-api-prod
+OPENED AT: 2026-03-01 08:00
+UPDATED AT: 2026-03-01 11:40
+RESOLVED AT: 2026-03-01 11:20
+CLOSED AT: 2026-03-01 11:40
+DESCRIPTION:
+EU customers saw checkout timeouts after the 09:00 release. Card authorization was the affected business process.
+CAUSE:
+Root cause: connection pool exhaustion in payments-api-prod because a leaked HTTP client held connections after the 09:00 deploy.
+RESOLUTION CODE: Solved (Permanently)
+RESOLUTION NOTES:
+Priya Nair restarted the payments-api pool and rolled back the leaked client. Validation: checkout error rate returned to baseline and synthetic probes passed.
+CLOSE NOTES:
+Service restored. Customer notified.
+WORK NOTES:
+[2026-03-01 08:10] Priya Nair (internal): Acknowledged P2 checkout latency and started the investigation.
+[2026-03-01 08:40] Priya Nair (internal): Investigation identified connection pool saturation. Progress confirmed against the 09:00 deploy.
+[2026-03-01 09:30] Priya Nair (internal): Blocker: waiting on change approval to roll back the leaked HTTP client.
+[2026-03-01 10:00] Priya Nair (internal): Next step: apply the rollback and watch pool metrics. Will update the caller after validation.
+[2026-03-01 11:20] Priya Nair (internal): Resolved. The fix was applied and checkout was restored. Resolution communicated to the caller.
+ADDITIONAL COMMENTS:
+[2026-03-01 08:20] Jordan Lee (customer): Checkout is still timing out for EU customers.
+
+INCIDENT NUMBER: INC1002
+SHORT DESCRIPTION: Pricing service returned stale promotional prices
+PRIORITY: 3
+SEVERITY: 3
+STATE: Resolved
+ASSIGNMENT GROUP: Commerce Engineering
+ASSIGNED TO: Sam Ortiz
+CALLER: Mina Shah
+BUSINESS SERVICE: Pricing
+CONFIGURATION ITEM: pricing-service
+OPENED AT: 2026-03-02 10:00
+UPDATED AT: 2026-03-02 16:00
+RESOLVED AT: 2026-03-02 15:40
+CLOSED AT:
+DESCRIPTION:
+Storefront showed yesterday's promotional prices for about two hours.
+CAUSE:
+The errors were caused by a stale cache in pricing-service. The cache was not invalidated after the price file landed.
+RESOLUTION CODE: Solved (Workaround)
+RESOLUTION NOTES:
+Sam Ortiz applied a cache flush on pricing-service and reloaded the price file. A synthetic probe was not run.
+CLOSE NOTES:
+Prices refreshed for the active storefronts.
+WORK NOTES:
+[2026-03-02 10:20] Sam Ortiz (internal): Acknowledged the stale price report and opened an investigation.
+[2026-03-02 12:00] Sam Ortiz (internal): Investigation identified a cache that ignored the new price file. Progress confirmed on two nodes.
+[2026-03-02 14:10] Sam Ortiz (internal): Next step: flush the cache on the remaining nodes and will update the caller.
+[2026-03-02 15:40] Sam Ortiz (internal): Resolved. Prices were restored on the storefront. Resolution communicated to Mina Shah.
+ADDITIONAL COMMENTS:
+[2026-03-02 10:30] Mina Shah (customer): The banner price is still wrong on the EU site.
+
+INCIDENT NUMBER: INC1003
+SHORT DESCRIPTION: Mail relay delays for outbound invoices
+PRIORITY: 3
+SEVERITY: 3
+STATE: Closed
+ASSIGNMENT GROUP: Messaging
+ASSIGNED TO: Alex Romero
+CALLER: Casey Wu
+BUSINESS SERVICE: Billing Mail
+CONFIGURATION ITEM: smtp-relay-02
+OPENED AT: 2026-03-03 09:00
+UPDATED AT: 2026-03-04 11:00
+RESOLVED AT: 2026-03-04 10:30
+CLOSED AT: 2026-03-04 11:00
+DESCRIPTION:
+The failure occurred in the mail relay due to a timeout. Invoice mail was slow for several business hours.
+CAUSE:
+RESOLUTION CODE: Solved (Permanently)
+RESOLUTION NOTES:
+The service was restarted.
+CLOSE NOTES:
+Mail flow resumed.
+WORK NOTES:
+[2026-03-03 13:30] Alex Romero (internal): Acknowledged the delayed invoice mail and recorded that a basic investigation was open.
+[2026-03-04 10:00] Alex Romero (internal): Resolved. The relay was restored after a restart.
+ADDITIONAL COMMENTS:
+
+INCIDENT NUMBER: INC1004
+SHORT DESCRIPTION: Users cannot send email
+PRIORITY: 3
+SEVERITY: 3
+STATE: Closed
+ASSIGNMENT GROUP: Service Desk
+ASSIGNED TO:
+CALLER: Robin Patel
+BUSINESS SERVICE: Email
+CONFIGURATION ITEM:
+OPENED AT: 2026-03-04 08:00
+UPDATED AT: 2026-03-04 18:00
+RESOLVED AT:
+CLOSED AT: 2026-03-04 18:00
+DESCRIPTION:
+Users cannot send email.
+CAUSE:
+RESOLUTION CODE:
+RESOLUTION NOTES:
+CLOSE NOTES:
+WORK NOTES:
+ADDITIONAL COMMENTS:
+
+INCIDENT NUMBER: INC1005
+SHORT DESCRIPTION: Nightly invoice pipeline failed
+PRIORITY: 2
+SEVERITY: 2
+STATE: Resolved
+ASSIGNMENT GROUP: Data Platform
+ASSIGNED TO: Noah Grant
+CALLER: Finance Ops
+BUSINESS SERVICE: Invoicing
+CONFIGURATION ITEM: invoice-pipeline
+OPENED AT: 2026-03-05 01:10
+UPDATED AT: 2026-03-05 04:40
+RESOLVED AT: 2026-03-05 04:20
+CLOSED AT:
+DESCRIPTION:
+Pipeline failed.
+CAUSE:
+RESOLUTION CODE: Solved (Workaround)
+RESOLUTION NOTES:
+Noah Grant restarted the invoice-pipeline runner and requeued the batch. Validation: the batch completed and the row count returned to baseline.
+CLOSE NOTES:
+Finance confirmed the invoices were produced.
+WORK NOTES:
+[2026-03-05 01:20] Noah Grant (internal): Acknowledged the failed nightly run and started an investigation.
+[2026-03-05 02:10] Noah Grant (internal): Investigation is still checking logs. Progress confirmed that the job stopped at the extract step.
+[2026-03-05 03:00] Noah Grant (internal): Next step: restart the runner. Will update finance after the rerun.
+[2026-03-05 04:20] Noah Grant (internal): Resolved. The batch was restored and resolution communicated to finance ops.
+ADDITIONAL COMMENTS:
+
+INCIDENT NUMBER: INC1006
+SHORT DESCRIPTION: Search index lag on the catalog service
+PRIORITY: 3
+SEVERITY: 3
+STATE: Resolved
+ASSIGNMENT GROUP: Search Platform
+ASSIGNED TO: Taylor Brooks
+CALLER: Catalog Ops
+BUSINESS SERVICE: Catalog
+CONFIGURATION ITEM: catalog-index
+OPENED AT: 2026-03-06 09:00
+UPDATED AT: 2026-03-06 13:10
+RESOLVED AT: 2026-03-06 12:50
+CLOSED AT:
+DESCRIPTION:
+Catalog search results lagged the product database by about 40 minutes.
+CAUSE:
+Root cause: catalog-index consumers stalled because a poison message blocked the partition.
+RESOLUTION CODE: Solved (Permanently)
+RESOLUTION NOTES:
+The stalled consumer was restarted and the poison message was moved aside. Validation: index lag returned to baseline and probes passed.
+CLOSE NOTES:
+Search results are current.
+WORK NOTES:
+[2026-03-06 09:15] Taylor Brooks (internal): Acknowledged catalog lag and started an investigation.
+[2026-03-06 10:00] Taylor Brooks (internal): Investigation identified a stuck partition. Progress confirmed on the consumer lag graph.
+[2026-03-06 11:10] Taylor Brooks (internal): Next step: move the poison message and restart the consumer. Will update catalog ops.
+[2026-03-06 12:50] Taylor Brooks (internal): Resolved. Search was restored. Resolution communicated to the caller.
+ADDITIONAL COMMENTS:
+
+INCIDENT NUMBER: INC1007
+SHORT DESCRIPTION: VPN gateway failover completed without a written trail
+PRIORITY: 2
+SEVERITY: 1
+STATE: Closed
+ASSIGNMENT GROUP: Network Operations
+ASSIGNED TO: Elena Voss
+CALLER: Region Desk
+BUSINESS SERVICE: Remote Access
+CONFIGURATION ITEM: vpn-gw-east
+OPENED AT: 2026-03-07 07:00
+UPDATED AT: 2026-03-07 09:00
+RESOLVED AT: 2026-03-07 08:40
+CLOSED AT: 2026-03-07 09:00
+DESCRIPTION:
+Remote access dropped for the east region for 20 minutes.
+CAUSE:
+Root cause: vpn-gw-east failed over because the primary ISP circuit flapped.
+RESOLUTION CODE: Solved (Permanently)
+RESOLUTION NOTES:
+Elena Voss failed over the remaining sessions to vpn-gw-west and reset the primary tunnel. Validation: client reconnects returned to baseline and probes passed.
+CLOSE NOTES:
+Remote access was restored.
+WORK NOTES:
+ADDITIONAL COMMENTS:
+
+INCIDENT NUMBER: INC1008
+SHORT DESCRIPTION: Order service errors during the morning peak
+PRIORITY: 2
+SEVERITY: 2
+STATE: Resolved
+ASSIGNMENT GROUP: Order Reliability
+ASSIGNED TO: Chris Dalton
+CALLER: Store Ops
+BUSINESS SERVICE: Orders
+CONFIGURATION ITEM: order-service
+OPENED AT: 2026-03-08 08:00
+UPDATED AT: 2026-03-08 12:30
+RESOLVED AT: 2026-03-08 12:10
+CLOSED AT:
+DESCRIPTION:
+Orders failed during the morning peak. Two different explanations were recorded.
+CAUSE:
+Root cause: storage volume on order-service reached capacity.
+Root cause: packet loss on the core network caused the failures.
+RESOLUTION CODE: Solved (Workaround)
+RESOLUTION NOTES:
+Chris Dalton restarted order-service. The error rate dropped after the restart.
+CLOSE NOTES:
+Peak traffic subsided.
+WORK NOTES:
+[2026-03-08 08:12] Chris Dalton (internal): Acknowledged order failures and started an investigation.
+[2026-03-08 09:00] Chris Dalton (internal): Investigation identified disk pressure. Progress confirmed on the host.
+[2026-03-08 10:30] Chris Dalton (internal): Next step: restart the service. Will update store ops after the restart.
+[2026-03-08 12:10] Chris Dalton (internal): Resolved. The service was restored. Resolution communicated to store ops.
+ADDITIONAL COMMENTS:

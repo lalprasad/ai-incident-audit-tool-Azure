@@ -1,0 +1,15 @@
+Audit this incident against the criteria.
+
+Return JSON with:
+- ticket_id
+- measures: one object per measure id in the criteria (measure_id, measure_name, score, confidence, evidence, strengths, gaps, recommendation)
+- overall_strengths, overall_gaps, recommended_actions
+- flags: zero or more of "insufficient evidence", "conflicting information", "unclear root cause", "missing resolution ownership", "low AI confidence", "incomplete extracted structure"
+
+Each evidence item must include text, source_section, ticket_field, relevance, evidence_status ("Supported" or "Insufficient evidence"), and timestamp and page when they appear in the ticket. Supported text must be copied from the incident. Do not include overall percentage.
+
+Incident JSON:
+{{incident_json}}
+
+Criteria JSON:
+{{criteria_json}}
