@@ -1,0 +1,21 @@
+{
+  "name": "AI Incident Audit Tool",
+  "install": "python3 -m venv .venv && .venv/bin/pip install -U pip && .venv/bin/pip install -r backend/requirements.txt && .venv/bin/python sample-data/build_pdf.py && cd frontend && npm install",
+  "start": "true",
+  "terminals": [
+    {
+      "name": "api",
+      "command": "cd backend && USE_MOCK_AZURE=true ../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 43124",
+      "description": "FastAPI audit API on port 43124 (mock Azure)"
+    },
+    {
+      "name": "ui",
+      "command": "cd frontend && npm run dev",
+      "description": "Vite React UI on port 43123; proxies /api to 43124"
+    }
+  ],
+  "ports": [
+    { "name": "ui", "port": 43123 },
+    { "name": "api", "port": 43124 }
+  ]
+}
