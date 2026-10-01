@@ -6,6 +6,57 @@ The model does not own the result. It proposes a 1–5 score and quotes from the
 
 Local runs default to `USE_MOCK_AZURE=true`. Mock and live Azure clients implement the same interfaces. No Azure credentials are required for the UI or the tests.
 
+## Technical architecture
+
+End-to-end flow (UI → API → Azure AI → deterministic scoring → store → UI):
+
+```mermaid
+flowchart TD
+  pdf[ServiceNow PDF extract] --> ui[React + Fluent UI]
+  ui -->|upload / process / poll| api[FastAPI audit API]
+  api --> blob[(Blob Storage<br/>or local files)]
+  api --> doc[Document Intelligence<br/>or pypdf mock]
+  doc --> segment[Segment + normalize tickets]
+  segment --> timeline[Timeline analyzer]
+  timeline --> model{Audit model}
+  rubric[Criteria JSON<br/>or Azure AI Search] --> model
+  rubric --> score
+  model -->|structured JSON scores + quotes| evidence[Evidence analyzer<br/>quote grounding]
+  evidence --> score[Scoring engine<br/>totals % classification]
+  score --> review[Human-review flags]
+  review --> store[(Cosmos DB<br/>or local JSON)]
+  store --> ui
+  store --> export[CSV / Excel export]
+  model -.->|live| oai[Azure OpenAI gpt-4o-mini]
+  model -.->|mock| rules[Deterministic mock rules]
+```
+
+Azure AI deployment topology:
+
+```mermaid
+flowchart LR
+  user[Auditor browser] --> app[App Service<br/>API + SPA]
+  app --> kv[Key Vault]
+  app --> oai[Azure OpenAI]
+  app --> di[Document Intelligence]
+  app --> blob[Blob Storage]
+  app --> cosmos[Cosmos DB]
+  app -.->|optional| search[Azure AI Search]
+  bicep[Bicep + deploy scripts] --> app
+  bicep --> oai
+  bicep --> di
+  bicep --> blob
+  bicep --> cosmos
+  bicep --> kv
+```
+
+**Control flow for one audit job**
+
+1. `POST /api/audits/upload` (or `/sample`) stores the PDF and creates a job (`Uploaded`).
+2. `POST /api/audits/{job_id}/process` runs Extracting → Tickets identified → Auditing → Completed / Failed.
+3. Each ticket is scored independently; a second audit of the same ticket id increments `audit_version`.
+4. The UI polls the job, then reads dashboard / ticket APIs. Overrides and “Accept AI scores” go through ticket review endpoints.
+
 ## Technologies and AI tools
 
 ### Application stack
@@ -134,22 +185,92 @@ Out-of-range scores raise errors; weights and bands are configurable in `audit_c
 
 **LLM proposes → rules verify → engine scores.** Generative AI supplies judgment and natural-language evidence; deterministic algorithms enforce grounding, arithmetic, classification, and review gates so results stay auditable and reproducible for a fixed criteria / prompt / model version.
 
-## Scores
+## Scores and rubric (scales 3–5)
 
-| Measure | Question |
+Each ticket is scored on **three criteria**. Every criterion uses an integer score **1–5**. Scores **3, 4, and 5** are the primary quality band (Fair / Good / Excellent). Scores **1 and 2** are system-defined extensions for severe gaps and are still shown in the UI.
+
+| Criterion (`measure_id`) | Question the auditor answers |
 | --- | --- |
-| User engagement | Were investigation updates timely and meaningful? |
-| Issue diagnosis | What caused it, where, and why? |
-| Solutioning | What was done, who did it, and how was recovery checked? |
+| User engagement (`user_engagement`) | Were investigation updates timely and meaningful? |
+| Issue diagnosis (`issue_diagnosis`) | What caused it, where, and why? |
+| Solutioning (`solutioning`) | What was done, who did it, and how was recovery checked? |
 
-Each measure is 1–5. Scores 1 and 2 are system-defined extensions and are labeled in the UI. Total = sum of the three scores (weights are configurable). Percentage = total / maximum × 100, rounded in application code.
+Source of truth for wording and weights: [`backend/app/config/audit_criteria.json`](backend/app/config/audit_criteria.json).
 
-| Percentage | Classification |
+### How a 3 / 4 / 5 is chosen
+
+The model (or mock rules) maps ticket evidence to a level. Scoring is **content-based**, not field-presence-based: an empty or generic note does not earn a high score. Evidence quotes must appear in the ticket after grounding.
+
+#### 1. User engagement & investigation handling
+
+Judges **quality and timeliness** of work notes / comments — not comment count alone. Considers elapsed time, priority, meaningfulness, progress visibility, and gaps. Timeliness expectations (used by mock rules; also informed by the rubric): P1 1h, P2 4h, P3 8h, P4 24h for first update / gap penalties.
+
+| Score | Label | When to award (primary rubric 3–5) |
+| --- | --- | --- |
+| **5** | Excellent | Clear, timely updates with continuous progress visibility covering acknowledgement, investigation, meaningful progress, blockers, next steps, **and** resolution communication. |
+| **4** | Good | Regular updates with adequate investigation progress. **Minor** gaps in timing or detail are allowed. |
+| **3** | Fair | Limited updates with only **basic** investigation progress — infrequent, generic, or lacking meaningful investigation detail. |
+| 2 | Very limited *(extension)* | Major gaps in updates or progress visibility. |
+| 1 | No meaningful updates *(extension)* | No meaningful investigation communication; absence of notes is **not** proof that people were informed. |
+
+**3 vs 4 vs 5 (engagement):**  
+- **3** = some trail exists but it is thin or generic.  
+- **4** = a usable investigation narrative with small holes.  
+- **5** = full lifecycle visibility (ack → investigate → progress → blockers → next steps → resolve) with timely updates.
+
+#### 2. Issue diagnosis
+
+The ticket must answer **what** caused the issue, **where** it occurred, and **why**. Distinguish symptom, immediate cause, contributing factor, root cause, affected component, and business process. A symptom such as “pipeline failed” is **not** a root cause. Conflicting `Root cause:` statements are a conflict, not a license to pick one side.
+
+| Score | Label | When to award (primary rubric 3–5) |
+| --- | --- | --- |
+| **5** | Excellent | Clearly answers what, where, and why, and identifies the **root cause**. |
+| **4** | Good | Answers **most** diagnostic questions with sufficient analysis (minor missing nuance OK). |
+| **3** | Fair | **Partial** diagnosis with limited root-cause detail (some of what/where/why present, but weak). |
+| 2 | Limited *(extension)* | Key diagnostic dimensions missing, or diagnostic statements conflict. |
+| 1 | Not documented *(extension)* | No meaningful diagnosis or root-cause analysis. |
+
+**3 vs 4 vs 5 (diagnosis):**  
+- **3** = partial story (e.g. component named but not why, or symptom-heavy wording).  
+- **4** = solid analysis missing one secondary detail.  
+- **5** = explicit root cause with location and causal “why,” grounded in ticket text.
+
+#### 3. Solutioning
+
+The resolution should say **what** was done, **who** performed it, and **how** recovery was validated. Look for action, named person/team, technical change, validation / recovery evidence, and preventive action when applicable. **Do not** infer ownership from Assignment group or Assigned to.
+
+| Score | Label | When to award (primary rubric 3–5) |
+| --- | --- | --- |
+| **5** | Excellent | Complete resolution details, **explicit ownership**, and **validation** of the fix. |
+| **4** | Good | Resolution and actions documented, with **minor** gaps (e.g. incomplete validation). |
+| **3** | Fair | Basic resolution with limited detail or ownership. |
+| 2 | Partial *(extension)* | Only partly documented; important info such as who performed the fix is missing. |
+| 1 | Missing *(extension)* | Resolution / action taken is missing or unclear. |
+
+**3 vs 4 vs 5 (solutioning):**  
+- **3** = something was done, but ownership and/or validation are thin.  
+- **4** = clear action path with a small gap (often validation).  
+- **5** = named actor + concrete change + evidence of recovery.
+
+### Totals and overall classification
+
+After each measure has a final integer score (AI or auditor override):
+
+```text
+total      = Σ (scoreᵢ × weightᵢ)          # default weights = 1
+maximum    = Σ (5 × weightᵢ)               # default maximum = 15
+percentage = round_half_up(total / maximum × 100, 2)
+```
+
+| Percentage | Overall classification |
 | --- | --- |
 | 90–100 | Excellent |
-| 75–89 | Good |
-| 60–74 | Fair |
-| Below 60 | Needs Improvement |
+| 75–89.99 | Good |
+| 60–74.99 | Fair |
+| 0–59.99 | Needs Improvement |
+
+Example (default weights): scores **5 + 4 + 3** → total **12** / 15 → **80%** → **Good**.  
+Model-returned overall totals are ignored; only the scoring engine’s result is stored (`totals_computed_by = scoring_engine`).
 
 ## Run locally
 
