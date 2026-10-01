@@ -1,0 +1,79 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install backend (venv + deps)",
+      "type": "shell",
+      "command": "python3 -m venv .venv && .venv/bin/pip install -U pip && .venv/bin/pip install -r backend/requirements.txt && .venv/bin/python sample-data/build_pdf.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Install frontend (npm)",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Install all",
+      "dependsOn": ["Install backend (venv + deps)", "Install frontend (npm)"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "API: mock Azure (port 43124)",
+      "type": "shell",
+      "command": "../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 43124 --reload",
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "USE_MOCK_AZURE": "true",
+          "AUDIT_STAGE_DELAY_MS": "300"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "uvicorn",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*(Uvicorn running on|Application startup complete).*"
+        }
+      }
+    },
+    {
+      "label": "UI: Vite (port 43123)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*(Local:|ready in).*"
+        }
+      }
+    },
+    {
+      "label": "Run locally (API + UI)",
+      "dependsOn": ["API: mock Azure (port 43124)", "UI: Vite (port 43123)"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend API (mock Azure)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "0.0.0.0", "--port", "43124", "--reload"],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "USE_MOCK_AZURE": "true",
+        "AUDIT_STAGE_DELAY_MS": "300"
+      },
+      "jinja": true,
+      "justMyCode": true
+    },
+    {
+      "name": "Frontend UI (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:43123",
+      "webRoot": "${workspaceFolder}/frontend/src",
+      "preLaunchTask": "UI: Vite (port 43123)"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack: API + UI",
+      "configurations": ["Backend API (mock Azure)", "Frontend UI (Chrome)"],
+      "preLaunchTask": "API: mock Azure (port 43124)",
+      "stopAll": true
+    }
+  ]
+}

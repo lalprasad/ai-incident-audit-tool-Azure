@@ -274,7 +274,28 @@ Model-returned overall totals are ignored; only the scoring engine’s result is
 
 ## Run locally
 
-Requirements: Python 3.12 and Node 22.
+Requirements: Python 3.12 and Node 22. Local default is **mock Azure** (`USE_MOCK_AZURE=true`) — no Azure credentials needed.
+
+### VS Code / Cursor
+
+1. Clone the repo and open the folder in VS Code (or Cursor): **File → Open Folder…**
+2. Install recommended extensions when prompted (Python / debugpy).
+3. **Terminal → Run Task… → `Install all`** (creates `.venv`, installs Python + npm deps, builds the sample PDF).
+4. **Terminal → Run Task… → `Run locally (API + UI)`**  
+   Or use **Run and Debug → `Full stack: API + UI`**.
+5. Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
+
+| Service | URL |
+| --- | --- |
+| UI | http://127.0.0.1:43123 |
+| API health | http://127.0.0.1:43124/api/health |
+| OpenAPI docs | http://127.0.0.1:43124/docs |
+
+On the New audit page: **Load sample extract** → **Start audit** (eight sample incidents).
+
+Tasks live in [`.vscode/tasks.json`](.vscode/tasks.json). Launch configs live in [`.vscode/launch.json`](.vscode/launch.json).
+
+### Terminal (two shells)
 
 ```bash
 python3 -m venv .venv
@@ -282,7 +303,7 @@ python3 -m venv .venv
 .venv/bin/python sample-data/build_pdf.py
 
 cd backend
-../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 43124
+USE_MOCK_AZURE=true ../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 43124
 ```
 
 In another shell:
@@ -294,8 +315,6 @@ npm run dev
 ```
 
 Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The Vite server proxies `/api` to port 43124.
-
-On the New audit page, choose **Load sample extract** and then **Start audit**. The sample PDF contains eight incidents.
 
 Optional: set `AUDIT_STAGE_DELAY_MS=400` before starting the API if you want the status stepper to pause on each stage.
 
