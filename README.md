@@ -6,6 +6,54 @@ The model does not own the result. It proposes a 1–5 score and quotes from the
 
 Local runs default to `USE_MOCK_AZURE=true`. Mock and live Azure clients implement the same interfaces. No Azure credentials are required for the UI or the tests.
 
+## Technologies and AI tools
+
+### Application stack
+
+| Layer | Technology | Role |
+| --- | --- | --- |
+| API | Python 3.12, FastAPI, Uvicorn | Upload jobs, audit orchestration, REST API, optional SPA hosting |
+| Models / config | Pydantic, pydantic-settings | Request/response schemas, environment configuration |
+| Scoring | Deterministic scoring engine (app code) | Owns totals, percentage, classification; rejects out-of-range scores and unsupported quotes |
+| PDF (local / mock) | pypdf | Text-layer extraction when Azure Document Intelligence is mocked |
+| Exports | openpyxl | CSV / Excel audit exports |
+| UI | React 19, TypeScript, Vite | Audit upload, job progress, dashboard, ticket review |
+| UI components | Fluent UI (`@fluentui/react-components`) | Buttons, forms, badges, layout primitives |
+| Routing | React Router | New audit, dashboard, history, ticket detail |
+| Tests | pytest, httpx | API and scoring tests against mock Azure clients |
+
+### Azure AI and cloud services (live mode)
+
+| Service | How it is used |
+| --- | --- |
+| **Azure OpenAI** | Chat completions with structured JSON for per-measure scores (1–5), confidence, evidence quotes, strengths, gaps, and recommendations. Default deployment: `gpt-4o-mini`. |
+| **Azure AI Document Intelligence** | `prebuilt-layout` model extracts text and pages from ServiceNow PDF extracts before segmentation. |
+| **Azure AI Search** *(optional)* | Retrieves audit criteria / rubric. If unset, the app loads `backend/app/config/audit_criteria.json`. |
+| **Azure Blob Storage** | Stores uploaded PDF extracts. |
+| **Azure Cosmos DB** | Persists audit jobs and results (SQL API, partition key `/ticket_id`). |
+| **Azure Key Vault** | Holds OpenAI, Document Intelligence, Storage, and Cosmos secrets; App Service uses Key Vault references. |
+| **Azure Container Registry** | Hosts the Docker image for App Service (container deploy path). |
+| **Azure App Service** | Runs the API + built React SPA (Linux container or Python zip deploy). |
+| **Managed Identity** | Optional auth for OpenAI, Document Intelligence, Blob, and Cosmos instead of API keys (`AZURE_USE_MANAGED_IDENTITY=true`). |
+
+Live SDK packages (install via `backend/requirements-azure.txt`): `openai` (AzureOpenAI client), `azure-ai-documentintelligence`, `azure-storage-blob`, `azure-cosmos`, `azure-search-documents`, `azure-identity`, `azure-core`.
+
+### Infrastructure as code
+
+| Tool | Purpose |
+| --- | --- |
+| **Bicep** (`infrastructure/bicep/`) | Provisions OpenAI (with model deployment), Document Intelligence, Storage, Cosmos, Key Vault, App Service, optional AI Search, and RBAC |
+| **Docker** | Multi-stage image: Vite build → FastAPI serving API + static UI |
+| **Azure CLI scripts** | `scripts/deploy-azure.sh` (ACR + container) and `scripts/deploy-azure-zip.sh` (Python zip) |
+
+### How AI fits the audit pipeline
+
+1. **Document Intelligence** (or pypdf in mock mode) turns the PDF into page text.
+2. App code **segments and normalizes** ServiceNow tickets (`INCIDENT NUMBER:` / `Number:`).
+3. **Azure OpenAI** (or deterministic mock rules) proposes measure-level scores and evidence quotes from the structured ticket.
+4. An **evidence analyzer** drops quotes that are not present in the ticket.
+5. The **scoring engine** validates ranges and computes overall score, percentage, and classification — the model never owns the final percentage.
+
 ## Scores
 
 | Measure | Question |
