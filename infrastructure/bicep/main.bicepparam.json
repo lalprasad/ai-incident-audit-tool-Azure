@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": {
+      "value": "incaudit"
+    },
+    "openAiDeploymentName": {
+      "value": "gpt-4o-mini"
+    },
+    "openAiModelName": {
+      "value": "gpt-4o-mini"
+    },
+    "openAiModelVersion": {
+      "value": "2024-07-18"
+    },
+    "deploySearch": {
+      "value": false
+    },
+    "dockerImage": {
+      "value": "PLACEHOLDER"
+    }
+  }
+}

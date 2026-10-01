@@ -2,17 +2,29 @@ from __future__ import annotations
 
 import asyncio
 
+from app.ai.azure_credentials import azure_credential, require_azure_sdk
 from app.models.ticket import DocumentExtraction, PageText
 from app.utils.errors import ConfigurationError, InvalidDocumentError, TransientError
 from app.utils.retry import with_retries
 
 
 class AzureDocumentIntelligenceClient:
-    def __init__(self, endpoint: str, key: str) -> None:
-        if not endpoint or not key:
-            raise ConfigurationError("Document Intelligence endpoint and key are required")
-        self._endpoint = endpoint
+    def __init__(
+        self,
+        endpoint: str,
+        key: str = "",
+        *,
+        use_managed_identity: bool = True,
+    ) -> None:
+        if not endpoint:
+            raise ConfigurationError("Document Intelligence endpoint is required")
+        if not key and not use_managed_identity:
+            raise ConfigurationError(
+                "Provide AZURE_DOCUMENT_INTELLIGENCE_KEY or enable managed identity"
+            )
+        self._endpoint = endpoint.rstrip("/")
         self._key = key
+        self._use_managed_identity = use_managed_identity and not key
 
     async def analyze(self, content: bytes, filename: str) -> DocumentExtraction:
         del filename
@@ -30,14 +42,11 @@ class AzureDocumentIntelligenceClient:
         return await with_retries(_call)  # type: ignore[return-value]
 
     def _analyze_sync(self, content: bytes) -> DocumentExtraction:
-        try:
-            from azure.ai.documentintelligence import DocumentIntelligenceClient
-            from azure.core.credentials import AzureKeyCredential
-        except ImportError as exc:
-            raise ConfigurationError(
-                "Install backend/requirements-azure.txt to call Document Intelligence"
-            ) from exc
-        client = DocumentIntelligenceClient(self._endpoint, AzureKeyCredential(self._key))
+        require_azure_sdk("azure-ai-documentintelligence", "azure.ai.documentintelligence")
+        from azure.ai.documentintelligence import DocumentIntelligenceClient
+
+        credential = azure_credential(None if self._use_managed_identity else self._key)
+        client = DocumentIntelligenceClient(self._endpoint, credential)
         poller = client.begin_analyze_document(
             "prebuilt-layout",
             body=content,

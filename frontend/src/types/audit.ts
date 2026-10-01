@@ -152,6 +152,8 @@ export type DashboardSummary = {
 export type Health = {
   status: string;
   use_mock_azure: boolean;
+  azure_mode?: string;
   criteria_version: string;
   service: string;
+  openai_deployment?: string | null;
 };

@@ -1,4 +1,4 @@
-@description('Skeleton only. Secret values are not defined in this file.')
+@description('Key Vault for Azure AI keys. Values are written by scripts/deploy-azure.sh.')
 param location string
 param vaultName string
 param tenantId string
@@ -18,6 +18,7 @@ resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     }
     enableRbacAuthorization: true
     enableSoftDelete: true
+    enablePurgeProtection: false
   }
 }
 

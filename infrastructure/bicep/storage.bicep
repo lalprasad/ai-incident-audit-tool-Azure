@@ -1,4 +1,4 @@
-@description('Skeleton only. Not deployed by the MVP.')
+@description('Private blob storage for uploaded ServiceNow PDFs.')
 param location string
 param storageAccountName string
 

@@ -1,4 +1,4 @@
-@description('Skeleton only. Partition key is /ticket_id so one ticket history stays together.')
+@description('Cosmos DB for audit results. Partition key /ticket_id keeps ticket history together.')
 param location string
 param accountName string
 param databaseName string = 'incident-audit'

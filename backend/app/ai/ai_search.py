@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.ai.azure_credentials import azure_credential, require_azure_sdk
 from app.models.criteria import AuditCriteria
 from app.utils.errors import ConfigurationError
 
@@ -19,26 +20,27 @@ class AzureSearchCriteriaRetriever:
         self,
         *,
         endpoint: str,
-        key: str,
         index_name: str,
         fallback: AuditCriteria,
+        key: str = "",
+        use_managed_identity: bool = True,
     ) -> None:
-        if not endpoint or not key:
-            raise ConfigurationError("Azure AI Search endpoint and key are required")
+        if not endpoint:
+            raise ConfigurationError("Azure AI Search endpoint is required")
+        if not key and not use_managed_identity:
+            raise ConfigurationError("Provide AZURE_SEARCH_KEY or enable managed identity")
         self._endpoint = endpoint
         self._key = key
         self._index_name = index_name
         self._fallback = fallback
+        self._use_managed_identity = use_managed_identity and not key
 
     def get_criteria(self) -> AuditCriteria:
-        try:
-            from azure.core.credentials import AzureKeyCredential
-            from azure.search.documents import SearchClient
-        except ImportError as exc:
-            raise ConfigurationError(
-                "Install backend/requirements-azure.txt to query Azure AI Search"
-            ) from exc
-        client = SearchClient(self._endpoint, self._index_name, AzureKeyCredential(self._key))
+        require_azure_sdk("azure-search-documents", "azure.search.documents")
+        from azure.search.documents import SearchClient
+
+        credential = azure_credential(None if self._use_managed_identity else self._key)
+        client = SearchClient(self._endpoint, self._index_name, credential)
         results = client.search(search_text="audit criteria", top=1)
         for item in results:
             payload = item.get("criteria") or item.get("content")

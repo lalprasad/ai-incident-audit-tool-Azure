@@ -23,7 +23,6 @@ from app.repositories.protocols import AuditRepository
 from app.services.audit_service import AuditService
 from app.storage.blob_storage import AzureBlobStorage, BlobStore, LocalBlobStorage
 from app.storage.cosmos_repository import CosmosAuditRepository
-from app.utils.errors import ConfigurationError
 from app.utils.logging import AuditLogger
 
 
@@ -50,28 +49,32 @@ def build_container(settings: Settings) -> Container:
         ai_model = settings.ai_model_name
         model_version = settings.model_version
     else:
+        settings.validate_live_azure()
+        mi = settings.azure_use_managed_identity
         documents = AzureDocumentIntelligenceClient(
             settings.azure_document_intelligence_endpoint,
             settings.azure_document_intelligence_key,
+            use_managed_identity=mi,
         )
         model = AzureOpenAIAuditClient(
             endpoint=settings.azure_openai_endpoint,
             api_key=settings.azure_openai_api_key,
             deployment=settings.azure_openai_deployment,
             api_version=settings.azure_openai_api_version,
+            use_managed_identity=mi,
         )
-        if settings.azure_cosmos_endpoint:
-            repository = CosmosAuditRepository(
-                endpoint=settings.azure_cosmos_endpoint,
-                key=settings.azure_cosmos_key,
-                database=settings.azure_cosmos_database,
-                container=settings.azure_cosmos_container,
-            )
-        else:
-            raise ConfigurationError("Cosmos endpoint is required when USE_MOCK_AZURE=false")
+        repository = CosmosAuditRepository(
+            endpoint=settings.azure_cosmos_endpoint,
+            key=settings.azure_cosmos_key,
+            database=settings.azure_cosmos_database,
+            container=settings.azure_cosmos_container,
+            use_managed_identity=mi,
+        )
         blobs = AzureBlobStorage(
-            settings.azure_storage_connection_string,
-            settings.azure_storage_container,
+            container=settings.azure_storage_container,
+            connection_string=settings.azure_storage_connection_string,
+            account_url=settings.azure_storage_account_url,
+            use_managed_identity=mi,
         )
         ai_model = settings.azure_openai_deployment
         model_version = settings.azure_openai_api_version
@@ -115,5 +118,6 @@ def _criteria(settings: Settings) -> AuditCriteria:
             key=settings.azure_search_key,
             index_name=settings.azure_search_index,
             fallback=local,
+            use_managed_identity=settings.azure_use_managed_identity,
         )
     return retriever.get_criteria()

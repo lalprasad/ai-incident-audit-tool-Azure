@@ -1,38 +1,82 @@
-# Deployment notes
+# Deployment (Azure AI)
 
-The Bicep under `infrastructure/bicep/` is a skeleton for a later deployment. Do not treat it as a tested landing zone. Nothing in the MVP deploy scripts targets a subscription.
+The app runs in two modes:
 
-## Modules
+| Mode | When | AI stack |
+| --- | --- | --- |
+| Mock | `USE_MOCK_AZURE=true` (default locally) | Deterministic rules + local files |
+| Azure AI | `USE_MOCK_AZURE=false` | Azure OpenAI, Document Intelligence, Blob, Cosmos |
+
+Live mode supports **API keys** or **managed identity** (`AZURE_USE_MANAGED_IDENTITY=true` with empty keys).
+
+## Container layout
+
+`Dockerfile` builds the React UI into `backend/static` and serves **API + SPA** from one FastAPI process (`SERVE_FRONTEND=true`). That image is what App Service runs.
+
+## One-command deploy
+
+Requirements: Azure CLI logged in (or service principal env vars), Docker.
+
+```bash
+export AZURE_SUBSCRIPTION_ID=...
+export AZURE_LOCATION=eastus          # optional
+export AZURE_RESOURCE_GROUP=rg-incaudit
+export AZURE_NAME_PREFIX=incaudit
+
+# Service principal (optional; otherwise az login)
+export AZURE_TENANT_ID=...
+export AZURE_CLIENT_ID=...
+export AZURE_CLIENT_SECRET=...
+
+chmod +x scripts/deploy-azure.sh
+./scripts/deploy-azure.sh
+```
+
+The script:
+
+1. Creates a resource group and Azure Container Registry
+2. Builds and pushes the Docker image
+3. Deploys Bicep (OpenAI + gpt-4o-mini deployment, Document Intelligence, Storage, Cosmos, Key Vault, App Service)
+4. Writes AI keys into Key Vault
+5. Restarts the web app and probes `/api/health`
+
+App settings use `@Microsoft.KeyVault(...)` references — secrets are not inlined in Bicep.
+
+## Bicep modules
 
 | File | Resource |
 | --- | --- |
-| `main.bicep` | Wires the modules. Parameters only, no secret values |
-| `storage.bicep` | Storage account, private blob access, TLS 1.2 |
-| `openai.bicep` | Cognitive Services account, kind OpenAI |
-| `document-intelligence.bicep` | Cognitive Services account, kind FormRecognizer |
-| `search.bicep` | Azure AI Search |
-| `cosmos.bicep` | Cosmos DB account, SQL API, database and container partitioned by `/ticket_id` |
-| `keyvault.bicep` | Key Vault. Secret names are parameters. Values are not in source |
-| `appservice.bicep` | Linux App Service for the API. Settings point at Key Vault references |
+| `main.bicep` | Composition + Key Vault RBAC for the app identity |
+| `openai.bicep` | Azure OpenAI account **and** chat model deployment |
+| `document-intelligence.bicep` | Form Recognizer / Document Intelligence |
+| `storage.bicep` | Storage account + `incident-audits` container |
+| `cosmos.bicep` | Cosmos DB SQL API, partition `/ticket_id` |
+| `keyvault.bicep` | RBAC-enabled vault |
+| `appservice.bicep` | Linux container App Service |
+| `search.bicep` | Optional Azure AI Search |
 
-Create the OpenAI deployment and the Document Intelligence resource in the portal or a later module once names and capacity are chosen. The skeleton does not pick a model SKU that would start billing.
+## Live environment variables
 
-## Live mode
+See `backend/.env.example`. Required for Azure AI:
 
-Install `backend/requirements-azure.txt` and set `USE_MOCK_AZURE=false`. Required variables are listed in `backend/.env.example`:
+- `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION`
+- `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT`
+- `AZURE_STORAGE_CONNECTION_STRING` or `AZURE_STORAGE_ACCOUNT_URL`
+- `AZURE_COSMOS_ENDPOINT`, `AZURE_COSMOS_DATABASE`, `AZURE_COSMOS_CONTAINER`
+- Keys **or** managed identity
 
-- `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION`
-- `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT`, `AZURE_DOCUMENT_INTELLIGENCE_KEY`
-- `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`
-- `AZURE_COSMOS_ENDPOINT`, `AZURE_COSMOS_KEY`, `AZURE_COSMOS_DATABASE`, `AZURE_COSMOS_CONTAINER`
-- `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_KEY`, `AZURE_SEARCH_INDEX` optional. If search is empty, the API loads `audit_criteria.json`
+Optional: `AZURE_SEARCH_*` (otherwise `audit_criteria.json` is used).
 
-The frontend build should set `VITE_API_BASE_URL` to the API origin. In local dev, leave it empty so Vite proxies `/api`.
+## Frontend
 
-CORS origins default to `http://127.0.0.1:43123` and `http://localhost:43123`.
+Local Vite leaves `VITE_API_BASE_URL` empty and proxies `/api` to port 43124.
 
-## What a live call sends
+Production builds also leave the base empty so the browser calls same-origin `/api` on App Service.
 
-Document Intelligence receives the PDF bytes. Azure OpenAI receives the system prompt, the criteria JSON, and the structured ticket fields listed in `IncidentTicket.llm_payload`. It does not receive the PDF. Blob storage receives the original PDF and nothing else. Cosmos receives the audit document, which includes the ticket snapshot needed to reproduce the review.
+## Cost note
 
-Put keys in Key Vault. The App Service skeleton uses `@Microsoft.KeyVault(...)` references instead of inline secrets.
+Azure OpenAI, Document Intelligence (S0), Cosmos, and App Service B1 incur charges. Tear down with:
+
+```bash
+az group delete --name "$AZURE_RESOURCE_GROUP" --yes --no-wait
+```

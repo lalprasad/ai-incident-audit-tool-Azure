@@ -1,4 +1,4 @@
-@description('Skeleton only. Not deployed by the MVP.')
+@description('Azure AI Document Intelligence for PDF layout extraction.')
 param location string
 param accountName string
 

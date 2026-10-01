@@ -18,6 +18,7 @@ def test_health_reports_mock_mode(client) -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert body["use_mock_azure"] is True
+    assert body["azure_mode"] == "mock"
     assert body["criteria_version"] == "1.0.0"
 
 

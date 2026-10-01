@@ -52,6 +52,21 @@ Optional: set `AUDIT_STAGE_DELAY_MS=400` before starting the API if you want the
 
 Copy `backend/.env.example` if you want a local env file. Secrets stay empty in mock mode. Live Azure settings are documented in `docs/deployment.md`. Install `backend/requirements-azure.txt` only when `USE_MOCK_AZURE=false`.
 
+## Deploy to Azure AI
+
+Live mode uses **Azure OpenAI**, **Document Intelligence**, **Blob Storage**, and **Cosmos DB**. Managed identity or Key Vault–backed API keys are supported.
+
+```bash
+# After az login (or set AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID)
+export AZURE_SUBSCRIPTION_ID=<subscription>
+export AZURE_RESOURCE_GROUP=rg-incaudit
+./scripts/deploy-azure.sh          # Docker + ACR + App Service
+# or, without Docker:
+./scripts/deploy-azure-zip.sh      # zip deploy Python App Service
+```
+
+Details: [`docs/deployment.md`](docs/deployment.md).
+
 ## Tests
 
 ```bash
@@ -65,7 +80,9 @@ Tests use the mock clients, local files, and the sample extract. They do not cal
 - `backend/` FastAPI application, scoring engine, mock and Azure adapters
 - `frontend/` React, TypeScript, Vite, Fluent UI
 - `sample-data/` eight-ticket extract, PDF, and expected score ranges
-- `infrastructure/bicep/` skeletons only — nothing is deployed from this repo
+- `infrastructure/bicep/` Azure AI + App Service deployment
+- `scripts/deploy-azure.sh` / `deploy-azure-zip.sh` deploy helpers
+- `Dockerfile` single-container API + SPA image
 - `docs/` architecture, rubric, API, deployment, security, cost, and roadmap
 
 ## Sample incidents

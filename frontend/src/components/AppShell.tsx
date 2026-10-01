@@ -34,7 +34,16 @@ export function AppShell() {
           <NavLink to="/history">History</NavLink>
         </nav>
         <div className="header-meta">
-          <span className="pill">{health?.use_mock_azure === false ? "Azure" : "Mock Azure"}</span>
+          <span className="pill">
+            {health?.use_mock_azure === false
+              ? health.azure_mode === "managed_identity"
+                ? "Azure AI (MI)"
+                : "Azure AI"
+              : "Mock Azure"}
+          </span>
+          {health?.openai_deployment ? (
+            <span className="pill">{health.openai_deployment}</span>
+          ) : null}
           <span className="pill">Criteria {health?.criteria_version ?? "—"}</span>
         </div>
       </header>

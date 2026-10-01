@@ -1,8 +1,9 @@
-# Optional. Required only when USE_MOCK_AZURE=false.
+# Required when USE_MOCK_AZURE=false (Azure AI live mode).
 # Install with: pip install -r requirements-azure.txt
 azure-ai-documentintelligence>=1.0.0
 azure-core>=1.32.0
 azure-cosmos>=4.9.0
+azure-identity>=1.19.0
 azure-storage-blob>=12.24.0
 azure-search-documents>=11.5.0
 openai>=1.60.0

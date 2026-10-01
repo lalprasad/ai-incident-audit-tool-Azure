@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.ai.azure_credentials import azure_credential, require_azure_sdk
 from app.models.audit import AuditRecord
 from app.models.job import AuditJob
 from app.utils.errors import ConfigurationError
@@ -8,13 +9,24 @@ from app.utils.errors import ConfigurationError
 class CosmosAuditRepository:
     """Same repository contract as the local JSON store. Partition key is ticket_id."""
 
-    def __init__(self, *, endpoint: str, key: str, database: str, container: str) -> None:
-        if not endpoint or not key:
-            raise ConfigurationError("Cosmos endpoint and key are required")
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        database: str,
+        container: str,
+        key: str = "",
+        use_managed_identity: bool = True,
+    ) -> None:
+        if not endpoint:
+            raise ConfigurationError("Cosmos endpoint is required")
+        if not key and not use_managed_identity:
+            raise ConfigurationError("Provide AZURE_COSMOS_KEY or enable managed identity")
         self._endpoint = endpoint
         self._key = key
         self._database = database
         self._container = container
+        self._use_managed_identity = use_managed_identity and not key
 
     def save_audit(self, audit: AuditRecord) -> AuditRecord:
         document = audit.model_dump(mode="json")
@@ -99,10 +111,13 @@ class CosmosAuditRepository:
         return audits
 
     def _container_client(self):
-        try:
-            from azure.cosmos import CosmosClient
-        except ImportError as exc:
-            raise ConfigurationError("Install backend/requirements-azure.txt to use Cosmos DB") from exc
-        client = CosmosClient(self._endpoint, credential=self._key)
+        require_azure_sdk("azure-cosmos", "azure.cosmos")
+        from azure.cosmos import CosmosClient
+
+        if self._use_managed_identity:
+            credential = azure_credential(None)
+            client = CosmosClient(self._endpoint, credential=credential)
+        else:
+            client = CosmosClient(self._endpoint, credential=self._key)
         database = client.get_database_client(self._database)
         return database.get_container_client(self._container)

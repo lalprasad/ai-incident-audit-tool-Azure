@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from typing import Protocol
 
+from app.ai.azure_credentials import azure_credential, require_azure_sdk
 from app.utils.errors import ConfigurationError, NotFoundError
 
 
@@ -53,11 +54,24 @@ class LocalBlobStorage:
 
 
 class AzureBlobStorage:
-    def __init__(self, connection_string: str, container: str) -> None:
-        if not connection_string:
-            raise ConfigurationError("Azure Storage connection string is required")
+    """Azure Blob Storage via connection string or account URL + managed identity."""
+
+    def __init__(
+        self,
+        *,
+        container: str,
+        connection_string: str = "",
+        account_url: str = "",
+        use_managed_identity: bool = True,
+    ) -> None:
+        if not connection_string and not account_url:
+            raise ConfigurationError(
+                "Azure Storage connection string or account URL is required"
+            )
         self._connection_string = connection_string
+        self._account_url = account_url.rstrip("/")
         self._container = container
+        self._use_managed_identity = use_managed_identity and not connection_string
 
     async def upload(self, name: str, data: bytes, content_type: str) -> str:
         await asyncio.to_thread(self._upload_sync, name, data, content_type)
@@ -69,13 +83,17 @@ class AzureBlobStorage:
     async def delete(self, name: str) -> None:
         await asyncio.to_thread(self._delete_sync, name)
 
+    def _service(self):
+        require_azure_sdk("azure-storage-blob", "azure.storage.blob")
+        from azure.storage.blob import BlobServiceClient
+
+        if self._connection_string:
+            return BlobServiceClient.from_connection_string(self._connection_string)
+        credential = azure_credential(None)
+        return BlobServiceClient(account_url=self._account_url, credential=credential)
+
     def _client(self, name: str):
-        try:
-            from azure.storage.blob import BlobServiceClient
-        except ImportError as exc:
-            raise ConfigurationError("Install backend/requirements-azure.txt to use Azure Blob Storage") from exc
-        service = BlobServiceClient.from_connection_string(self._connection_string)
-        return service.get_blob_client(self._container, name)
+        return self._service().get_blob_client(self._container, name)
 
     def _upload_sync(self, name: str, data: bytes, content_type: str) -> None:
         from azure.storage.blob import ContentSettings
