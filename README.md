@@ -54,6 +54,86 @@ Live SDK packages (install via `backend/requirements-azure.txt`): `openai` (Azur
 4. An **evidence analyzer** drops quotes that are not present in the ticket.
 5. The **scoring engine** validates ranges and computes overall score, percentage, and classification — the model never owns the final percentage.
 
+## ML / AI algorithms and logic
+
+This product is **not** a classical trained ML classifier (no gradient boosting, neural fine-tuning, or offline label training in-repo). Quality judgment comes from a **large language model (LLM)** guided by a fixed rubric, then **deterministic post-processing** that owns numbers and grounds evidence.
+
+### 1. Generative LLM evaluation (live Azure OpenAI)
+
+| Technique | Implementation |
+| --- | --- |
+| **Prompted rubric scoring** | System + user prompts (`audit_system_prompt.txt`, `audit_user_prompt.txt`) instruct the model to score only documented ticket facts against `audit_criteria.json`. |
+| **Structured output** | Chat completion with JSON schema / `json_object` response format (`LlmAuditEvaluation`). Temperature `0` for stable scoring. |
+| **Per-measure ordinal scores** | Integer scores 1–5 for `user_engagement`, `issue_diagnosis`, `solutioning`, plus confidence ∈ [0, 1], evidence quotes, strengths, gaps, recommendation. |
+| **Anti-hallucination rules (prompt logic)** | No invented facts; symptom ≠ root cause; assignment ≠ ownership; missing data must be stated as missing; conflicts must be reported, not resolved. |
+| **Model does not own totals** | Any `overall_score` / `percentage` / `classification` from the model is discarded; the app recomputes them. |
+
+Default live model: **Azure OpenAI `gpt-4o-mini`** (configurable deployment).
+
+### 2. Deterministic mock auditor (local / tests)
+
+When `USE_MOCK_AZURE=true`, `MockAuditModel` + `mock_rules.py` replace the LLM with **hand-authored heuristics** over ticket text (keyword / pattern signals). Examples:
+
+- **Engagement:** detect acknowledgement, investigation, progress, blocker, next step, and resolution communication; apply a **timeliness penalty** when first update and longest gap both exceed priority SLAs (P1 1h, P2 4h, P3 8h, P4 24h).
+- **Diagnosis:** require what / where / why; treat phrases like “pipeline failed” as symptoms; flag conflicting `Root cause:` statements.
+- **Solutioning:** require action + named actor + validation; `Assigned to` alone does not count as ownership.
+
+This keeps UI and pytest runs offline and reproducible without calling Azure.
+
+### 3. Evidence grounding (deterministic)
+
+`EvidenceAnalyzer` is a **quote-verification** step (not ML):
+
+1. Build a ticket corpus from all extracted fields.
+2. Normalize whitespace and case; require quotes ≥ **12 characters**.
+3. Mark evidence **Supported** only if the normalized quote is a substring of the corpus.
+4. Drop invented timestamps / pages; mark unsupported items and add flags (`unsupported evidence`, `insufficient evidence`).
+5. Cap confidence at **0.5** when unsupported evidence appears.
+
+### 4. Scoring engine (deterministic math)
+
+Owned entirely by application code (`ScoringEngine`):
+
+```text
+total     = Σ (scoreᵢ × weightᵢ)
+maximum   = Σ (max_scoreᵢ × weightᵢ)     # default max_score = 5, weight = 1 → maximum 15
+percentage = round_half_up(total / maximum × 100, 2)
+```
+
+**Classification bands** (from criteria JSON):
+
+| Percentage | Label |
+| --- | --- |
+| 90–100 | Excellent |
+| 75–89.99 | Good |
+| 60–74.99 | Fair |
+| 0–59.99 | Needs Improvement |
+
+Out-of-range scores raise errors; weights and bands are configurable in `audit_criteria.json` without changing model code.
+
+### 5. Confidence labeling and human-review logic
+
+| Confidence | Label |
+| --- | --- |
+| ≥ 0.85 | High confidence |
+| 0.70–0.84 | Medium confidence |
+| &lt; 0.70 | Requires human review |
+
+`AuditEngine` also flags human review for: insufficient / unsupported evidence, conflicting information, unclear root cause, missing resolution ownership, low AI confidence, or incomplete extracted structure. Auditors can **override** a measure score; `ai_score` is preserved and totals are recomputed from the final scores.
+
+### 6. Document and ticket processing (rules, not ML)
+
+| Step | Logic |
+| --- | --- |
+| PDF text | Azure Document Intelligence `prebuilt-layout`, or pypdf text layer in mock mode |
+| Segmentation | Split on `INCIDENT NUMBER:` / `Number:` patterns |
+| Normalization | Map ServiceNow fields; leave missing fields empty (no imputation) |
+| Timeline | Parse work notes / comments into ordered events for engagement and review |
+
+### Design principle
+
+**LLM proposes → rules verify → engine scores.** Generative AI supplies judgment and natural-language evidence; deterministic algorithms enforce grounding, arithmetic, classification, and review gates so results stay auditable and reproducible for a fixed criteria / prompt / model version.
+
 ## Scores
 
 | Measure | Question |
