@@ -13,6 +13,7 @@ from app.config.settings import Settings
 from app.services.container import build_container
 from app.utils.errors import (
     AuditError,
+    ConfigurationError,
     ConflictError,
     InvalidDocumentError,
     InvalidModelOutput,
@@ -69,6 +70,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.exception_handler(InvalidModelOutput)
     async def invalid_model(_: Request, exc: InvalidModelOutput) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(ConfigurationError)
+    async def configuration_error(_: Request, exc: ConfigurationError) -> JSONResponse:
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
 
     @app.exception_handler(AuditError)
     async def audit_error(_: Request, exc: AuditError) -> JSONResponse:

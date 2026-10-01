@@ -10,14 +10,29 @@ REPO_ROOT = BACKEND_DIR.parent
 APP_DIR = BACKEND_DIR / "app"
 
 
+def _first_existing(*candidates: Path) -> Path:
+    """Prefer a real file (Docker/repo layout) over a missing default path."""
+    for path in candidates:
+        if path.exists():
+            return path
+    return candidates[0]
+
+
 class Settings(BaseSettings):
     use_mock_azure: bool = True
     data_dir: Path = BACKEND_DIR / ".data"
     criteria_path: Path = APP_DIR / "config" / "audit_criteria.json"
     prompt_path: Path = APP_DIR / "ai" / "prompts" / "audit_system_prompt.txt"
     user_prompt_path: Path = APP_DIR / "ai" / "prompts" / "audit_user_prompt.txt"
-    sample_pdf_path: Path = REPO_ROOT / "sample-data" / "multi-ticket.pdf"
-    sample_text_path: Path = REPO_ROOT / "sample-data" / "multi-ticket.txt"
+    # Repo layout: <root>/sample-data. Zip/App Service: <backend>/sample-data.
+    sample_pdf_path: Path = _first_existing(
+        REPO_ROOT / "sample-data" / "multi-ticket.pdf",
+        BACKEND_DIR / "sample-data" / "multi-ticket.pdf",
+    )
+    sample_text_path: Path = _first_existing(
+        REPO_ROOT / "sample-data" / "multi-ticket.txt",
+        BACKEND_DIR / "sample-data" / "multi-ticket.txt",
+    )
     frontend_origins: str = "http://127.0.0.1:43123,http://localhost:43123"
     serve_frontend: bool = False
     static_dir: Path = BACKEND_DIR / "static"

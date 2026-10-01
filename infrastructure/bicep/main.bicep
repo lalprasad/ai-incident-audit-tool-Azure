@@ -101,13 +101,58 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVault.outputs.vaultName
 }
 
+resource openAiAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
+  name: openAiAccountName
+}
+
+resource documentAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
+  name: documentAccountName
+}
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
+  name: storage.outputs.name
+}
+
 var secretsUserRole = '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
+var cognitiveUserRole = 'a97b65f3-24c7-4388-baec-2e87135dc908' // Cognitive Services User
+var blobContributorRole = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe' // Storage Blob Data Contributor
 
 resource appKvRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(kv.id, app.outputs.principalId, secretsUserRole)
   scope: kv
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', secretsUserRole)
+    principalId: app.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Optional managed-identity data-plane access (keys still work via Key Vault)
+resource appOpenAiRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(openAiAccount.id, app.outputs.principalId, cognitiveUserRole)
+  scope: openAiAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveUserRole)
+    principalId: app.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource appDocumentRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(documentAccount.id, app.outputs.principalId, cognitiveUserRole)
+  scope: documentAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveUserRole)
+    principalId: app.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource appBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, app.outputs.principalId, blobContributorRole)
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobContributorRole)
     principalId: app.outputs.principalId
     principalType: 'ServicePrincipal'
   }

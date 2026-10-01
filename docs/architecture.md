@@ -29,7 +29,9 @@ The UI never talks to a database. It calls the API. Business rules live in servi
 | Files | `BlobStore` | Local directory | Azure Blob Storage |
 | Results | `AuditRepository` | JSON file | Cosmos DB, partition key `ticket_id` |
 
-`USE_MOCK_AZURE=true` selects the mock column. Live mode is wired and requires environment variables. This repository does not deploy it.
+`USE_MOCK_AZURE=true` selects the mock column. Live mode (`USE_MOCK_AZURE=false`) uses Azure OpenAI, Document Intelligence, Blob Storage, and Cosmos DB with API keys (Key Vault references) or managed identity.
+
+Deploy with `./scripts/deploy-azure.sh` (Docker + ACR + App Service) or `./scripts/deploy-azure-zip.sh` (Python zip deploy). Details: [`deployment.md`](deployment.md).
 
 ## Request path
 

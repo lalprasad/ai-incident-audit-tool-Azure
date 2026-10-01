@@ -8,6 +8,8 @@ __pycache__/
 .env
 backend/.data/
 backend/data/
+backend/sample-data/
+backend/static/
 *.tmp
 node_modules/
 frontend/dist/

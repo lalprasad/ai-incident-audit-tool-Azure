@@ -46,7 +46,7 @@ App settings use `@Microsoft.KeyVault(...)` references — secrets are not inlin
 
 | File | Resource |
 | --- | --- |
-| `main.bicep` | Composition + Key Vault RBAC for the app identity |
+| `main.bicep` | Composition + Key Vault / Cognitive Services / Blob RBAC for the app identity |
 | `openai.bicep` | Azure OpenAI account **and** chat model deployment |
 | `document-intelligence.bicep` | Form Recognizer / Document Intelligence |
 | `storage.bicep` | Storage account + `incident-audits` container |
@@ -54,6 +54,8 @@ App settings use `@Microsoft.KeyVault(...)` references — secrets are not inlin
 | `keyvault.bicep` | RBAC-enabled vault |
 | `appservice.bicep` | Linux container App Service |
 | `search.bicep` | Optional Azure AI Search |
+
+Default App Service auth uses **Key Vault secret references** for OpenAI, Document Intelligence, Storage, and Cosmos keys (`AZURE_USE_MANAGED_IDENTITY=false`). Bicep also grants the app **Cognitive Services User** and **Storage Blob Data Contributor** so you can switch to managed identity later without redeploying those resources.
 
 ## Live environment variables
 

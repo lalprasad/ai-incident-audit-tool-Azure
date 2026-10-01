@@ -26,3 +26,10 @@ def test_live_azure_accepts_managed_identity_without_keys() -> None:
         azure_cosmos_endpoint="https://example.documents.azure.com:443/",
     )
     settings.validate_live_azure()
+
+
+def test_sample_paths_resolve_from_repo_layout() -> None:
+    settings = Settings()
+    assert settings.sample_pdf_path.exists()
+    assert settings.sample_text_path.exists()
+    assert settings.sample_pdf_path.name == "multi-ticket.pdf"

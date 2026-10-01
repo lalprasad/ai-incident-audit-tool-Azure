@@ -85,6 +85,10 @@ echo "==> Building frontend into backend/static"
   cp -R dist/. "$ROOT/backend/static/"
 )
 
+# Sample extract must live under backend/ for App Service zip layout
+rm -rf "$ROOT/backend/sample-data"
+cp -R "$ROOT/sample-data" "$ROOT/backend/sample-data"
+
 echo "==> Switching App Service to Python 3.12 + zip deploy"
 az webapp config set -g "$RG" -n "$APP_NAME" --linux-fx-version "PYTHON|3.12" >/dev/null
 az webapp config appsettings set -g "$RG" -n "$APP_NAME" --settings \
@@ -111,8 +115,9 @@ rm -f "$ZIP"
   zip -qr "$ZIP" . -x '.data/*' -x '**/__pycache__/*' -x '.env' -x 'blobs/*'
 )
 
-# restore requirements.txt
+# restore requirements.txt and drop staged sample-data copy
 cp /tmp/req-base.txt "$ROOT/backend/requirements.txt"
+rm -rf "$ROOT/backend/sample-data"
 
 echo "==> Zip deploy"
 az webapp deploy -g "$RG" -n "$APP_NAME" --src-path "$ZIP" --type zip >/dev/null
